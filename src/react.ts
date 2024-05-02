@@ -4,6 +4,7 @@ import ReactExports, {
   useCallback,
   useDebugValue,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
 } from 'react'
@@ -158,7 +159,7 @@ export function useSnapshot<T extends object>(
   )
   inRender = false
   const currAffected = new WeakMap()
-  useEffect(() => {
+  useLayoutEffect(() => {
     lastSnapshot.current = currSnapshot
     lastAffected.current = currAffected
   })
