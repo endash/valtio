@@ -173,7 +173,7 @@ it('no extra re-renders (render func calls in non strict mode)', async () => {
   expect(renderFn2).lastCalledWith(2)
 })
 
-it('no extra re-renders nested components (render func calls in non strict mode)', async () => {
+it('no extra re-renders with nested useSnapshot (render func calls in non strict mode)', async () => {
   const obj = proxy({ childCount: 0, parentCount: 0 })
 
   const childRenderFn = vi.fn()
@@ -188,10 +188,10 @@ it('no extra re-renders nested components (render func calls in non strict mode)
     )
   }
 
-  const parentRenderFn2 = vi.fn()
+  const parentRenderFn = vi.fn()
   const Parent = () => {
     const snap = useSnapshot(obj)
-    parentRenderFn2(snap.parentCount)
+    parentRenderFn(snap.parentCount)
     return (
       <>
         <div>parentCount: {snap.parentCount}</div>
@@ -210,8 +210,8 @@ it('no extra re-renders nested components (render func calls in non strict mode)
 
   expect(childRenderFn).toBeCalledTimes(1)
   expect(childRenderFn).lastCalledWith(0)
-  expect(parentRenderFn2).toBeCalledTimes(1)
-  expect(parentRenderFn2).lastCalledWith(0)
+  expect(parentRenderFn).toBeCalledTimes(1)
+  expect(parentRenderFn).lastCalledWith(0)
 
   obj.parentCount += 1
 
@@ -222,8 +222,65 @@ it('no extra re-renders nested components (render func calls in non strict mode)
 
   expect(childRenderFn).toBeCalledTimes(2)
   expect(childRenderFn).lastCalledWith(0)
-  expect(parentRenderFn2).toBeCalledTimes(2)
-  expect(parentRenderFn2).lastCalledWith(1)
+  expect(parentRenderFn).toBeCalledTimes(2)
+  expect(parentRenderFn).lastCalledWith(1)
+})
+
+it('no extra re-renders with child useSnapshot component (render func calls in non strict mode)', async () => {
+  const obj = proxy({ childCount: 0, anotherValue: 0 })
+
+  const childRenderFn = vi.fn()
+  const Child = () => {
+    const snap = useSnapshot(obj)
+    childRenderFn(snap.childCount)
+    return (
+      <>
+        <div>childCount: {snap.childCount}</div>
+        <button onClick={() => ++obj.childCount}>childButton</button>
+      </>
+    )
+  }
+
+  const parentRenderFn = vi.fn()
+  const Parent = () => {
+    const [parentCount, setParentCount] = useState(0);
+
+    parentRenderFn(parentCount)
+
+    return (
+      <>
+        <div>parentCount: {parentCount}</div>
+        <button onClick={() => setParentCount(v => v + 1)}>parentButton</button>
+        <Child />
+      </>
+    )
+  }
+
+  const { getByText } = render(<Parent />)
+
+  await waitFor(() => {
+    getByText('childCount: 0')
+    getByText('parentCount: 0')
+  })
+
+  expect(childRenderFn).toBeCalledTimes(1)
+  expect(childRenderFn).lastCalledWith(0)
+  expect(parentRenderFn).toBeCalledTimes(1)
+  expect(parentRenderFn).lastCalledWith(0)
+
+  obj.anotherValue += 1
+
+  fireEvent.click(getByText('parentButton'))
+
+  await waitFor(() => {
+    getByText('childCount: 0')
+    getByText('parentCount: 1')
+  })
+
+  expect(childRenderFn).toBeCalledTimes(2)
+  expect(childRenderFn).lastCalledWith(0)
+  expect(parentRenderFn).toBeCalledTimes(2)
+  expect(parentRenderFn).lastCalledWith(1)
 })
 
 it('object in object', async () => {
